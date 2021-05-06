@@ -1,0 +1,5 @@
+//BEGIN editDeal //
+	$did = $_POST['did'];
+	$page = "editDeal";
+	$disData = "deal";
+//END editDeal //

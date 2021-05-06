@@ -1,0 +1,259 @@
+<!--BEGIN manageClients -->
+	
+	<br>
+	
+	<table border="1" BORDERCOLOR="#000000" cellspacing="0" cellpadding="5" WIDTH="90%" BGCOLOR="#FFFFFF"><TR><TD><CENTER>
+<BR>
+
+	<div style="border:1px solid black;width:850px;height:65px;background-color:#ffff99;padding:5px;">
+
+	<table border="0" cellspacing="0" cellpadding="5" WIDTH="800">
+	<form action="<?php echo "$PHP_SELF";?>" method="GET">
+	<input type="hidden" name="op" value="manageClients">
+	<input type="hidden" name="clients_filter" value="1">
+	<tr>
+
+	<td style="font-size:16px;">
+
+<NOBR><IMG SRC="../images/search.gif" border="0"> Find Clients:</NOBR></td>
+
+
+	<td align="left" style="font-size:10px;"><NOBR>First Name:<input type="text" name="clients_filter_name_first" value="<?php echo $clients_filter_name_first;?>"></NOBR></td>
+
+	<td align="left" style="font-size:10px;"><NOBR>Last Name: <input type="text" name="clients_filter_name_last" value="<?php echo $clients_filter_name_last;?>"></NOBR></td>
+
+	<td align="left" style="font-size:10px;"><NOBR>Type Preference:
+<select name="clients_filter_type">
+	<option value="0">All</option>
+	<?php while ($rowGetTypes = mysqli_fetch_object($quTypes)) {?>
+		<option value="<?php echo $rowGetTypes->TYPE;?>" <?php if ($rowGetTypes->TYPE==$clients_filter_type) { echo " selected";}?>><?php echo $rowGetTypes->TYPENAME;?></option>
+	<?php } ?>
+	</select></td>
+
+
+
+	</tr>
+	<tr>
+
+<td align="center" style="font-size:10px;"><input type="submit" value="find"></TD>
+
+	<td align="leftt" style="font-size:10px;"><NOBR>Price Min: &nbsp;<input type="text" name="clients_filter_price_min" value="<?php echo $clients_filter_price_min;?>"></NOBR> </td>
+
+	<td align="left" style="font-size:10px;"><NOBR>Price Max: &nbsp;<input type="text" name="clients_filter_price_max" value="<?php echo $clients_filter_price_max;?>"></NOBR></td>
+
+	</tr>
+	</form>
+	</table>
+	</div>
+
+
+<P>
+
+	<table width="80%" border="0" cellspacing="0" cellpadding="0">
+	<tr>
+	<td align="left" colspan="8" valign="top"  height="1" bgcolor="#FFFFFF"><a href="<?php echo "$PHP_SELF?op=createClient";?>"><img border="0" hspace="0" vspace="0" width="72" height="22" src="../assets/images/newClient.jpg"></a></td>
+	</tr>
+	<tr>
+	<td align="left" colspan="10" valign="bottom" bgcolor="#FFFFFF" style="font-size:10px;">
+	<?php
+	if (!$_GET['show_all_clients']) {
+		$display_bunch = $clients_limit_start + $clients_limit_n;
+		if ($display_bunch > $clients_count) {
+			$display_bunch = $clients_count;
+		}
+		$display_start = $clients_limit_start;
+		if ($display_start == 0) {
+			$display_start = 1;
+		}
+		?>
+		<p>
+		<b><?php echo $display_start;?> - <?php echo $display_bunch;?></b> of <b><?php echo $clients_count;?></b>
+		<?php if ($clients_count > $clients_limit_n) {?>
+		&nbsp;&nbsp;&nbsp;go to page 
+		<?php $pageTop = ceil($clients_count / $clients_limit_n);
+		for ($i=1;$i <= $pageTop;$i++) {
+			if ($clients_page == $i) {
+				echo "$i |";
+			}else {?>
+				<a href="<?php echo "$PHP_SELF?op=manageClients&clients_page=$i";?>"><?php echo $i;?></a> |
+			<?php } ?>
+		<?php } ?>
+		&nbsp;&nbsp;&nbsp;<?php if (($clients_page) < ($clients_count / $clients_limit_n)) {
+			$nextPage = $clients_page + 1;
+			?>
+			<a href="<?php echo "$PHP_SELF?op=manageClients&clients_page=$nextPage";?>">Next</a>
+		<?php } ?> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="<?php echo "$PHP_SELF?op=manageClients&show_all_clients=1";?>">Show all Clients</a>
+		<?php }
+	}?></td>
+		</tr>
+	<tr>
+	<td colspan="26" valign="top"  height="1" bgcolor="#000000"><img border="0" hspace="0" vspace="0" width="100%" height="1" src="../assets/images/blk_spacer.gif"></td>
+	</tr>
+	<tr>
+
+	<td valign="top" height="15" width="1" bgcolor="#000000"><img border="0" hspace="0" vspace="0" width="1" height="100%" src="../assets/images/blk_spacer.gif"></td>
+
+
+	<td align="left" bgcolor="#FFFF99"><a href="<?php echo "$PHP_SELF?op=manageClients&clients_sort=NAME_LAST";?>"><div class="controltext" <?php if ($clients_sort=="NAME_LAST") { echo "style=\"text-decoration:underline;\"";}?>>Name</div></a></td>
+
+<TD bgcolor="#FFFF99"> &nbsp; </TD>
+
+	<td align="left" bgcolor="#FFFF99"><a href="<?php echo "$PHP_SELF?op=manageClients&clients_sort=HOME_PHONE";?>"><div class="controltext" <?php if ($clients_sort=="HOME_PHONE") { echo "style=\"text-decoration:underline;\"";}?>>Home Phone</div></a></td>
+
+<TD bgcolor="#FFFF99"> &nbsp; </TD>
+
+	<td align="left" bgcolor="#FFFF99"><a href="<?php echo "$PHP_SELF?op=manageClients&clients_sort=WORK_PHONE";?>"><div class="controltext" <?php if ($clients_sort=="WORK_PHONE") { echo "style=\"text-decoration:underline;\"";}?>>Work Phone</div></a></td>
+
+<TD bgcolor="#FFFF99"> &nbsp; </TD>
+
+	<td align="left" bgcolor="#FFFF99"><a href="<?php echo "$PHP_SELF?op=manageClients&clients_sort=TYPE";?>"><div class="controltext" <?php if ($clients_sort=="TYPE") { echo "style=\"text-decoration:underline;\"";}?>>Type</div></a></td>
+
+<TD bgcolor="#FFFF99"> &nbsp; </TD>
+
+	<td align="left" width="75" bgcolor="#FFFF99"><a href="<?php echo "$PHP_SELF?op=manageClients&clients_sort=LOC_PREF";?>"><div class="controltext" <?php if ($clients_sort=="LOC_PREF") { echo "style=\"text-decoration:underline;\"";}?>>Location</div></a></td>
+
+<TD bgcolor="#FFFF99"> &nbsp; </TD>
+
+	<td align="left" width="75" bgcolor="#FFFF99"><a href="<?php echo "$PHP_SELF?op=manageClients&clients_sort=ROOMS_PREF";?>"><div class="controltext" <?php if ($clients_sort=="ROOMS_PREF") { echo "style=\"text-decoration:underline;\"";}?>># of Beds</div></a></td>
+
+<TD bgcolor="#FFFF99"> &nbsp; </TD>
+
+	<td align="left" bgcolor="#FFFF99"><a href="<?php echo "$PHP_SELF?op=manageClients&clients_sort=PRICEMIN";?>"><div class="controltext" <?php if ($clients_sort=="PRICEMIN") { echo "style=\"text-decoration:underline;\"";}?>>Price Min</div></a></td>
+
+<TD bgcolor="#FFFF99"> &nbsp; </TD>
+
+	<td align="left" bgcolor="#FFFF99"><a href="<?php echo "$PHP_SELF?op=manageClients&clients_sort=PRICEMAX";?>"><div class="controltext" <?php if ($clients_sort=="PRICEMAX") { echo "style=\"text-decoration:underline;\"";}?>>Price Max</div></a></td>
+
+<TD bgcolor="#FFFF99"> &nbsp; </TD>
+
+<td align="left" bgcolor="#FFFF99"><a href="<?php echo "$PHP_SELF?op=manageClients&clients_sort=DATE_NEXT_CONTACT";?>"><div class="controltext" <?php if ($clients_sort=="DATE_NEXT_CONTACT") { echo "style=\"text-decoration:underline;\"";}?>>Next Contact</div></a></td>
+
+<TD bgcolor="#FFFF99"> &nbsp; </TD>
+
+<td align="left" bgcolor="#FFFF99"><a href="<?php echo "$PHP_SELF?op=manageClients&clients_sort=DATE_MOVEIN";?>"><div class="controltext" <?php if ($clients_sort=="DATE_MOVEIN") { echo "style=\"text-decoration:underline;\"";}?>>Move In</div></a></td>
+
+	<td align="center" bgcolor="#FFFF99">&nbsp;</td>
+	<td align="center" bgcolor="#FFFF99">&nbsp;</td>
+	<td align="center" bgcolor="#FFFF99">&nbsp;</td>
+	<td align="center" bgcolor="#FFFF99">&nbsp;</td>
+	<td align="center" bgcolor="#FFFF99">&nbsp;</td>
+	<td align="center" bgcolor="#FFFF99">&nbsp;</td>
+	<td valign="top" height="15" width="1" bgcolor="#000000"><img border="0" hspace="0" vspace="0" width="1" height="100%" src="../assets/images/blk_spacer.gif"></td>
+	</tr>
+	<tr>
+
+	<td colspan="26" valign="top"  height="1" bgcolor="#000000"><img border="0" hspace="0" vspace="0" width="100%" height="1" src="../assets/images/blk_spacer.gif"></td>
+	</tr>	
+	
+	<?php $rowColor = "#FFFF99";?>
+    <?php while ($rowGetClients = mysqli_fetch_object($quGetClients)) { ?>
+    		
+    		
+    	<tr>
+	<td valign="top" height="30" width="1" bgcolor="#000000"><img border="0" hspace="0" vspace="0" width="1" height="100%" src="../assets/images/blk_spacer.gif"></td>
+
+	<td bgcolor="<?php echo $rowColor;?>"><div class="ad"><?php echo "&nbsp; $rowGetClients->NAME_FIRST $rowGetClients->NAME_LAST";?></td>
+
+<TD bgcolor="<?php echo $rowColor;?>"> &nbsp; </TD>
+
+	<td bgcolor="<?php echo $rowColor;?>"><div class="ad"><?php echo "$rowGetClients->HOME_PHONE";?></div></td>
+
+<TD bgcolor="<?php echo $rowColor;?>"> &nbsp; </TD>
+
+	<td bgcolor="<?php echo $rowColor;?>"><div class="ad"><?php echo "$rowGetClients->WORK_PHONE";?></div></td>
+
+<TD bgcolor="<?php echo $rowColor;?>"> &nbsp; </TD>
+
+	<td bgcolor="<?php echo $rowColor;?>"><div class="ad"><?php echo "$rowGetClients->TYPENAME";?></div></td>
+
+<TD bgcolor="<?php echo $rowColor;?>"> &nbsp; </TD>
+
+
+	<td bgcolor="<?php echo $rowColor;?>"><div class="ad">
+<?php 
+//echo "$rowGetClients->LOC_PREF";
+$client_location_ids=split(",", $rowGetClients->LOC_PREF);
+$client_location_names="";
+foreach ($client_location_ids as $client_location => $client_location_id)
+{
+  $client_location_names.="<br>".$LOC_ARRAY[$client_location_id];
+}
+$client_location_names=preg_replace('/^<br>/',"" ,$client_location_names);
+echo $client_location_names;
+?>
+</div></td>
+
+<TD bgcolor="<?php echo $rowColor;?>"> &nbsp; </TD>
+
+
+	<td width="75" bgcolor="<?php echo $rowColor;?>"><div class="ad">
+	<?php $rprefs = split(",", $rowGetClients->ROOMS_PREF);
+	foreach ($rprefs as $rpref) {
+		echo $DEFINED_VALUE_SETS['ROOMS'][$rpref];
+		echo "&nbsp;";
+	}?></div></td>
+
+<TD bgcolor="<?php echo $rowColor;?>"> &nbsp; </TD>
+
+	<td bgcolor="<?php echo $rowColor;?>"><div class="ad"><?php echo "$rowGetClients->PRICEMIN";?></div></td>
+
+<TD bgcolor="<?php echo $rowColor;?>"> &nbsp; </TD>
+
+	<td bgcolor="<?php echo $rowColor;?>"><div class="ad"><?php echo "$rowGetClients->PRICEMAX";?></div></td>
+
+<TD bgcolor="<?php echo $rowColor;?>"> &nbsp; </TD>
+
+	<td bgcolor="<?php echo $rowColor;?>"><div class="ad"><?php echo "$rowGetClients->DATE_NEXT_CONTACT";?></DIV></td>
+
+<TD bgcolor="<?php echo $rowColor;?>"> &nbsp; </TD>
+
+	<td bgcolor="<?php echo $rowColor;?>"><div class="ad"><?php echo "$rowGetClients->DATE_MOVEIN";?></DIV></td>
+
+<TD bgcolor="<?php echo $rowColor;?>"> &nbsp; </TD>
+
+	<td bgcolor="<?php echo $rowColor;?>"><div class="ad">
+
+<TD bgcolor="<?php echo $rowColor;?>"> &nbsp; </TD>
+
+<td bgcolor="<?php echo $rowColor;?>">
+
+<?php
+
+if ( $rowGetClients->CLIENT_EMAIL != "" ) {
+	echo "<A HREF=mailto:$rowGetClients->CLIENT_EMAIL><IMG src=../assets/images/mailto.gif BORDER=0></A>";
+} else {
+	echo " &nbsp; ";
+}
+
+; ?>
+
+
+
+</DIV></td>
+
+
+	<td bgcolor="<?php echo $rowColor;?>"><div class="ad"><a href="<?php echo "$PHP_SELF?op=editClient&clid=$rowGetClients->CLID";?>"><img width="28" height="15" border="0" vspace="0" hspace="0" src="../assets/images/edit.jpg"></a></div></td>
+
+
+
+	<td bgcolor="<?php echo $rowColor;?>"><div class="ad"><a href="<?php echo "$PHP_SELF?op=deleteClient&clid=$rowGetClients->CLID";?>"><img width='39' height='15' border='0' vspace='0' hspace='0' src='../assets/images/delete.jpg'></a></div></td>
+	<td valign="top" height="30" width="1" bgcolor="#000000"><img border="0" hspace="0" vspace="0" width="1" height="100%" src="../assets/images/blk_spacer.gif"></td>
+	</tr>
+    	
+    	<?php if ($rowColor=="#FFFF99") {
+    		$rowColor="#FFFFFF";
+    	}else {
+    		$rowColor="#FFFF99";
+    	}
+    }?>
+    		
+    	
+	<tr>
+	<td colspan="26" valign="top"  height="1" bgcolor="#000000"><img border="0" hspace="0" vspace="0" width="100%" height="1" src="../assets/images/blk_spacer.gif"></td>
+	</tr>
+	</table>
+	<br>
+</CENTER>
+</TD></TR></TABLE>
+<BR>
+<!--END manageClients -->

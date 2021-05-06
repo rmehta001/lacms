@@ -1,0 +1,194 @@
+<?php
+die("DON'T TOUCH THIS PLEASE!");
+include ("../inc/local_info.php");
+
+mysqli_select_db($dbh, $DBNAME);
+
+$cid[0]= 23767;
+$cid[1]= 23026;
+$cid[2]= 18535;
+$cid[3]= 18536;
+$cid[4]= 18356;
+$cid[5]= 20669;
+$cid[6]= 18325;
+$cid[7]= 20862;
+$cid[8]= 18097;
+$cid[9]= 18240;
+$cid[10]= 18241;
+$cid[11]= 21197;
+$cid[12]= 18245;
+$cid[13]= 18156;
+$cid[14]= 18140;
+$cid[15]= 21161;
+$cid[16]= 18114;
+$cid[17]= 18491;
+$cid[18]= 19618;
+$cid[19]= 19912;
+$cid[20]= 18301;
+$cid[21]= 23034;
+$cid[22]= 20625;
+$cid[23]= 20622;
+$cid[24]= 19365;
+$cid[25]= 18001;
+$cid[26]= 18030;
+$cid[27]= 18354;
+$cid[28]= 18357;
+$cid[29]= 19957;
+$cid[30]= 20777;
+$cid[31]= 21274;
+$cid[32]= 22713;
+$cid[33]= 22712;
+$cid[34]= 22458;
+$cid[35]= 21193;
+$cid[36]= 19965;
+$cid[37]= 21188;
+$cid[38]= 21342;
+$cid[39]= 22998;
+$cid[40]= 22999;
+$cid[41]= 21060;
+$cid[42]= 20537;
+$cid[43]= 23835;
+$cid[44]= 19537;
+$cid[45]= 22674;
+$cid[46]= 18060;
+$cid[47]= 18057;
+$cid[48]= 20075;
+$cid[49]= 20810;
+$cid[50]= 23770;
+$cid[51]= 21113;
+$cid[52]= 19319;
+$cid[53]= 19317;
+$cid[54]= 22739;
+$cid[55]= 22468;
+$cid[56]= 22725;
+$cid[57]= 23834;
+$cid[58]= 21186;
+$cid[59]= 18631;
+$cid[60]= 19483;
+$cid[61]= 22282;
+$cid[62]= 20535;
+$cid[63]= 20534;
+$cid[64]= 21179;
+$cid[65]= 20533;
+$cid[66]= 22576;
+$cid[67]= 22658;
+$cid[68]= 19878;
+$cid[69]= 19693;
+$cid[70]= 19584;
+$cid[71]= 18299;
+$cid[72]= 19516;
+$cid[73]= 22730;
+$cid[74]= 23019;
+$cid[75]= 21192;
+$cid[76]= 22577;
+$cid[77]= 23783;
+$cid[78]= 21337;
+$cid[79]= 20563;
+$cid[80]= 20562;
+$cid[81]= 20531;
+$cid[82]= 19955;
+$cid[83]= 20846;
+$cid[84]= 18315;
+$cid[85]= 18111;
+$cid[86]= 19473;
+$cid[87]= 21056;
+$cid[88]= 19482;
+$cid[89]= 21089;
+$cid[90]= 18326;
+$cid[91]= 22671;
+$cid[92]= 23070;
+$cid[93]= 23071;
+$cid[94]= 21557;
+$cid[95]= 22737;
+$cid[96]= 23154;
+$cid[97]= 22575;
+$cid[98]= 23766;
+$cid[99]= 20076;
+$cid[100]= 20077;
+$cid[101]= 19308;
+$cid[102]= 23057;
+$cid[103]= 19505;
+$cid[104]= 20609;
+$cid[105]= 20608;
+$cid[106]= 20607;
+$cid[107]= 20027;
+$cid[108]= 21562;
+$cid[109]= 21563;
+$cid[110]= 20030;
+$cid[111]= 20073;
+$cid[112]= 20074;
+$cid[113]= 20588;
+$cid[114]= 20589;
+$cid[115]= 21191;
+$cid[116]= 20606;
+$cid[117]= 21049;
+$cid[118]= 23072;
+$cid[119]= 20887;
+$cid[120]= 20888;
+$cid[121]= 20889;
+$cid[122]= 20890;
+$cid[123]= 20891;
+$cid[124]= 20952;
+$cid[125]= 20953;
+$cid[126]= 22672;
+$cid[127]= 21110;
+$cid[128]= 21187;
+$cid[129]= 21234;
+$cid[130]= 21235;
+$cid[131]= 22740;
+$cid[132]= 21582;
+$cid[133]= 21583;
+$cid[134]= 22281;
+$cid[135]= 22591;
+$cid[136]= 22592;
+$cid[137]= 22597;
+$cid[138]= 22631;
+$cid[139]= 22632;
+$cid[140]= 22709;
+$cid[141]= 22710;
+$cid[142]= 22665;
+$cid[143]= 22762;
+$cid[144]= 22945;
+$cid[145]= 23049;
+$cid[146]= 23058;
+$cid[147]= 23061;
+$cid[148]= 23062;
+$cid[149]= 23063;
+$cid[150]= 23155;
+$cid[151]= 23162;
+$cid[152]= 23825;
+$cid[153]= 23216;
+$cid[154]= 23740;
+$cid[155]= 23744;
+$cid[156]= 23745;
+$cid[157]= 23782;
+
+
+$updated = array();
+$i=0;
+foreach ($cid as $thisCID) {
+	$quStrGetLiveAd = "SELECT BODY FROM CLASS WHERE CID=$thisCID";
+	$quGetLiveAd = mysqli_query($dbh, $quStrGetLiveAd) or die ("no live ad for $thisCID");
+	$rowGetLiveAd = mysqli_fetch_object($quGetLiveAd);
+	
+	$quStrGetBUAd = "SELECT BODY FROM LACMS_BACKUP.CLASS WHERE CID=$thisCID";
+	$quGetBUAd = mysqli_query($dbh, $quStrGetBUAd) or die ("no BU ad for $thisCID");
+	$rowGetBUAd = mysqli_fetch_object($quGetBUAd);
+	
+	if ($rowGetLiveAd->BODY !== $rowGetBUAd->BODY) {
+		$quStrUpdateClass = "UPDATE CLASS SET BODY='$rowGetBUAd->BODY' WHERE CID=$thisCID";
+		$quUpdateClass = mysqli_query($dbh, $quStrUpdateClass);
+		$updated[$i] = $thisCID;
+		$i++;
+		//die ($quStrUpdateClass);
+		
+		
+		
+		//die (" $thisCID-------$rowGetLiveAd->BODY !== $rowGetBUAd->BODY");
+	}
+	
+}
+echo $i;
+
+?>
+	

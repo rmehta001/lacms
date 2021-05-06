@@ -1,0 +1,5 @@
+$app = "home";
+$now = date("Ymd");
+$page="home";
+$needOptions = true;
+$title = "Home";

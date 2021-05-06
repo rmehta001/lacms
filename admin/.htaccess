@@ -1,0 +1,8 @@
+
+AuthUserFile C:\xampp\htdocs\bosapt\admin\.htpasswd
+AuthName "LACMS-Admin Area"
+AuthType Basic
+
+<Limit GET POST>
+require valid-user
+</Limit>

@@ -1,0 +1,85 @@
+<!--
+BODY
+DIV 
+.splashtext { font-family: Verdana; font-size: 10px}
+.contenttext { font-family: Verdana; font-size: 10px }
+.contenttext:first-letter { font-size:105%; }
+.contentnav { font-family: Verdana; font-size: 9px; font-color: light-grey }
+.menu { font-family: Verdana; font-size:12px; text-decoration: none  }
+.controltext {font-family:monospace; font-size:20px; text-decoration: none }
+.controltextimp {font-family:monospace; font-size:14px; text-decoration:underline }
+.topic { font-family: Verdana; font-size:14px; text-decoration:none;   }
+.ad { font-family: Verdana; font-size: 10px;}
+.conArea {background-color:#FFFF99; border:1px solid #000000; border-bottom:0px solid black; padding:5;}
+.conAreaBottom {background-color:#FFFF99; border:1px solid #000000; padding:5;}
+.conRow {:first-line {font-family: Verdana; font-size: 14px; text-align:left; text-decoration: underline;} font-family: Verdana; font-size: 14px; text-decoration: none; background-color:#FFFF99}
+.conCell { font-family: Verdana; font-size: 12px; text-decoration: none; background-color:#FFFF99;}
+SPAN
+.conCell2 { font-family: Verdana; font-size: 14px; text-decoration: none; background-color:#FFFF99;}
+.conCell { font-family: Verdana; font-size: 12px; text-decoration: none; background-color:#FFFF99;}
+.whiteTabFirst {padding:10px; text-align:left; font-weight:bold;cursor:hand;}
+.whiteTab {padding:10px; text-align:left; font-weight:bold;border-left-width:1px;border-left-style:solid;border-left-color:black;cursor:hand;}
+.yellowTab {padding:10px; text-align:left;font-weight:bold; border-left-width:1px;border-left-style:solid;border-left-color:black;border-bottom-width:1px;border-bottom-style:solid;border-bottom-color:black;background-color:#EEE8AA;cursor:hand;}
+.yellowTabFirst {padding:10px; text-align:left;font-weight:bold;border-bottom-width:1px;border-bottom-style:solid;border-bottom-color:black;background-color:#EEE8AA;cursor:hand;}
+A:link {text-decoration: none; color: black}
+A:visited { text-decoration: none; color: black}
+A:hover   {text-decoration: underline; color: grey}
+TD
+.controltext {font-family:monospace; font-size:12px; text-decoration: none }
+.ad { font-family: Verdana; font-size: 10px}
+
+.descviewad {
+width: 425px;
+height: 250px;
+overflow: auto;
+}
+
+/***** Navigation *****/
+
+
+<?php
+if ($pref_topmenu=="") {
+$topmenucolor="#99CCFF";
+} else {
+$topmenucolor="$pref_topmenu";
+} ?>
+
+
+
+#navigation
+{
+	background:<?php echo $topmenucolor;?>;
+	color:#fff;
+
+	height:15px;
+	line-height:2em;
+}
+
+* html #navigation a {width:1%;}
+
+#navigation .selected,#navigation a:hover
+{
+	background:#D2D1D9;
+	color:#333;
+	text-transform:uppercase;
+	text-decoration:none;
+
+}
+
+#navigation2 .selected,#navigation a:hover
+{
+	background:#CCFFFF;
+	color:#333;
+	text-transform:uppercase;
+	text-decoration:none;
+
+}
+
+
+
+
+/***** End Content *****/
+
+
+
+-->

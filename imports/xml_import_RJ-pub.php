@@ -1,0 +1,710 @@
+<?php
+include ("../inc/local_info.php");
+mysqli_select_db($dbh, $DBNAME);
+$now = date("Y-m-d");
+$time = date("H:i:s");
+
+$headers = getallheaders();
+
+
+if ($headers['Content-Type'] == "application/x-www-form-urlencoded") {
+	$log = fopen ("badlog.log", "w+");
+	fwrite ($log, "test");
+	fclose ($log);
+	die("Error: Wrong headers sent,  please specify content-type as text/xml,  you sent ".$headers['Content-Type']);
+}
+
+$MLS = "http://www.bostonapartments.com/lacms/imports/xml_import-RJ.php";
+
+$xml = file_get_contents($MLS);
+
+if (!$xml) {
+	die ("Error: no xml sent.");
+}
+
+$wierdChar = chr (11);
+$xml = str_replace ($wierdChar, "", $xml);
+
+$parser = xml_parser_create();
+
+if (!xml_parse($parser, $xml)) {
+	$xml = addslashes($xml);
+	$quStrUpdateTrans = "INSERT INTO TRANSLOG (STATUS, USER) VALUES ('$xml', '$HTTP_AUTH_USER')";
+	$quUpdateTrans = mysqli_query($dbh, $quStrUpdateTrans) or die ("Error:  Internal Error has occured,  please notify BostonApartments.com software team. Internal Error Number 8.");
+	die ("Error:The xml document you sent is not valid.");
+}
+xml_parser_free($parser);
+
+
+$SENSITIVE_FIELDS = Array ("CID",
+"CLI",
+"USERNAME",
+"STATUS",
+"DATEIN",
+"MOD",
+"MODBY",
+"SPORDER",
+"SAFETY",
+"ALTSIG",
+"HINKLE",
+"PAYMENT_REC",
+"LEGID",
+"LEGLL",
+"TRANSDEL",
+"TRANSIN");
+
+//Account Info
+$accountStart = strpos ($xml, "<account");
+$accountEnd = strpos ($xml, "</account>");
+$accountLength = $accountEnd - $accountStart;
+$account = substr ($xml, $accountStart, $accountLength);
+
+$userStart = strpos($account, "user=\"") + 6;
+$userEnd = strpos ($account, "\"", $userStart);
+$userLength = $userEnd - $userStart;
+$user = substr ($account, $userStart, $userLength);
+
+$passStart = strpos($account, "pass=\"") + 6;
+$passEnd = strpos ($account, "\"", $passStart);
+$passLength = $passEnd - $passStart;
+$pass = substr ($account, $passStart, $passLength);
+
+$gridStart = strpos($account, "grid=\"") + 6;       
+$gridEnd = strpos ($account, "\"", $gridStart); 
+$gridLength = $gridEnd - $gridStart;
+$grid = substr ($account, $gridStart, $gridLength);
+
+$regkeyStart = strpos($account, "regkey=\"") + 8;       
+$regkeyEnd = strpos ($account, "\"", $regkeyStart);
+$regkeyLength = $regkeyEnd - $regkeyStart;
+$regkey = substr ($account, $regkeyStart, $regkeyLength);
+
+$quStrAuth = "SELECT * FROM USERS INNER JOIN `GROUP` ON USERS.`GROUP`=`GROUP`.GRID WHERE (USERS.HANDLE='$user' AND USERS.PASS='$pass' AND `GROUP`.`REGEXP` > '$now')";
+
+$quAuth = mysqli_query($dbh, $quStrAuth) or die ("Error: There was a problem with your account information.");
+$rowAuth = mysqli_fetch_object($quAuth);
+
+if (!$rowAuth->UID) {
+	die ("Failure:  Invaild User.");
+}
+
+
+
+
+//Transaction Info
+$number_of_recordsStart = strpos ($xml, "<number-of-listings>") + 20;
+$number_of_recordsEnd = strpos ($xml, "</number-of-listings>");
+$number_of_recordsLength = $number_of_recordsEnd - $number_of_recordsStart;
+$number_of_records = substr ($xml, $number_of_recordsStart, $number_of_recordsLength);
+
+$dateStart = strpos ($xml, "<date-of-export>") + 16;
+$dateEnd = strpos ($xml, "</date-of-export>");
+$dateLength = $dateEnd - $dateStart;
+$date = substr ($xml, $dateStart, $dateLength);
+
+$timeStart = strpos ($xml, "<time-of-export>") + 16;
+$timeEnd = strpos ($xml, "</time-of-export>");
+$timeLength = $timeEnd - $timeStart;
+$mtime = substr ($xml, $timeStart, $timeLength);
+
+$quStrRecordTrans = "INSERT INTO TRANSLOG (USER, PASS, GRID, REGKEY, DATE, TIME, NUMBEROFRECORDS) VALUES ('$user', '$pass', '$grid', '$regkey', '$now', '$time', '$number_of_records')";
+$quRecordTrans = mysqli_query($dbh, $quStrRecordTrans) or die ("Error: There was a problem with your account information.");
+$translog = mysqli_insert_id($dbh);
+
+
+$quStrCount = "SELECT count(CID) AS FCOUNT from CLASS where CLI='$grid'";
+$quCount = mysqli_query($dbh, $quStrCount) or die("Error:  Internal Error has occured,  please notify BostonApartments.com software team. Internal Error Number 1.");
+$rowGetCount = mysqli_fetch_object($quCount);
+$firstCount = $rowGetCount->FCOUNT;
+
+
+$quStrMarkForDel = "UPDATE CLASS SET TRANSDEL='1' WHERE CLI='$grid'";
+$quMarkForDel = mysqli_query($dbh, $quStrMarkForDel) or die ("Error:  Internal Error has occured,  please notify BostonApartments.com software team. Internal Error Number 2.");
+
+
+//echo "$quStrAuth<hr>$quStrRecordTrans<br>$quStrCount<br>$quStrMarkForDel<br>";
+
+//Listings
+
+$listingsStart = strpos($xml, "<listings>") + 10;
+$listingsEnd = strpos($xml, "</listings>");
+$listingsLength = $listingsEnd - $listingsStart;
+$listings = substr ($xml, $listingsStart, $listingsLength);
+$listings = split ("<listing>", $listings);
+$numListings = count ($listings);
+
+
+$num_to_insert =( $numListings > $rowAuth->MAXACT) ? $rowAuth->MAXACT : $numListings;
+// = $numListings;
+// > $rowAuth->MAXACT) ? $rowAuth->MAXACT : $numListings;
+//echo "<br>Read $num_to_insert records.<br>";
+
+for ($i=1;$i<$num_to_insert;$i++) {
+	$listing = $listings[$i];
+	$fields = split ("<field", $listing);
+	$num_fields = count($fields);
+	if ($num_fields < 1) {
+		$insErr++;
+		continue;
+	}
+	
+	$field_list = "(`DATEIN`, `CLI`, `TRANSIN`, STATUS";
+	$value_list = "('$now', '$grid', '1', 'ACT'";
+	//'ACT'" ;
+	
+	for($j=1;$j<$num_fields;$j++) {
+		$field = $fields[$j];
+		$nameStart = strpos($field, "name=\"")+6;
+		$nameEnd = strpos ($field, "\"", $nameStart);
+		$nameLength = $nameEnd - $nameStart;
+		$name = substr ($field, $nameStart, $nameLength);
+		if (in_array($name, $SENSITIVE_FIELDS)) {
+			continue;
+		}
+		if ($name == "UID") {
+			$personalUIDSent = true;
+		}
+		$valueStart = strpos($field, ">")+ 1;
+		$valueEnd = strpos($field, "</field>");
+		$valueLength = $valueEnd - $valueStart;
+		$value = substr ($field, $valueStart, $valueLength);
+		$field_list .= ", `$name`";
+		$value_list .= ", '". urldecode(addslashes($value)) ."'";
+		
+		
+	}
+	if (!$personalUIDSent) {
+		$field_list .= ", `UID`";
+		$value_list .= ", '$rowAuth->UID'";
+	}
+	$field_list .= ")";
+	$value_list .= ")";
+	
+	$quStrInsertListing = "INSERT INTO CLASS $field_list VALUES $value_list";
+//	echo "<hr>$quStrInsertListing<hr>";
+	$quInsertListing = mysqli_query($dbh, $quStrInsertListing) or $insErr++;
+
+}
+
+$quStrCountNow = "SELECT count(CID) AS COUNTNOW FROM CLASS WHERE CLI='$grid'";
+$quCountNow = mysqli_query($dbh, $quStrCountNow) or die ("Error:  Internal Error has occured,  please notify BostonApartments.com software team. Internal Error Number 3.");
+$rowCountNow = mysqli_fetch_object($quCountNow);
+$num_inserted = ($i - 1) - $insErr;
+
+
+if ($rowCountNow->COUNTNOW == ($firstCount + ($num_inserted))) {;
+	$quStrDelMarked = "DELETE FROM CLASS WHERE (CLI='$grid' AND TRANSDEL=1)";
+	$quDelMarked = mysqli_query($dbh, $quStrDelMarked) or die ("Error:  Internal Error has occured,  please notify BostonApartments.com software team. Internal Error Number 4.");
+	$msg = "Success: $num_inserted  listing(s) inserted.";
+	if ($insErr) {
+		$msg .= "Warning: $insErr listing(s) did not make it into the system because they were not formated correctly or had illegal values.";
+	}
+	$quStrUpdateTrans = "UPDATE TRANSLOG SET STATUS='Success', NUMBEROFRECORDS='$num_inserted' WHERE ID='$translog'";
+	$quUpdateTrans = mysqli_query($dbh, $quStrUpdateTrans) or die ("Error:  Internal Error has occured,  please notify BostonApartments.com software team. Internal Error Number 5.");
+	
+}else {
+	$quStrDelIn = "DELETE FROM CLASS WHERE (CLI='$grid' AND TRANSIN=1)";
+	$quDelIn = mysqli_query($dbh, $quStrDelIn) or die("Error:  Internal Error has occured,  please notify BostonApartments.com software team. Internal Error Number 6.");
+	
+	$quStrUpdateMarked = "UPDATE CLASS SET TRANSDEL=0 WHERE CLI=1";
+	$quUpdateMarked = mysqli_query($dbh, $quStrUpdateMarked) or die ("Error:  Internal Error has occured,  please notify BostonApartments.com software team. Internal Error Number 7.");
+	$msg = "Failure: 1 or more rules have been broken.";
+	
+	$quStrUpdateTrans = "UPDATE TRANSLOG SET STATUS='Failure', NUMBEROFRECORDS=0 WHERE ID='$translog'";
+	$quUpdateTrans = mysqli_query($dbh, $quStrUpdateTrans) or die ("Error:  Internal Error has occured,  please notify BostonApartments.com software team. Internal Error Number 8.");
+}
+
+
+// RJ feed ad shut-off //
+
+$quUpdateRelo = "UPDATE `CLASS` SET `STATUS`='STO', `UID`='6976' WHERE `CLI`='1041'";
+$UpdateRelo = mysqli_query($dbh, $quUpdateRelo) or die ("Error:  Could not clean up RentJuice.");
+
+
+// RJ feed ad shut-off end //
+
+
+// RJ LOC from ZIP //
+
+UPDATE `CLASS` SET LOC = "193" WHERE `ZIP` = "01460" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "194" WHERE `ZIP` = "01106" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "195" WHERE `ZIP` = "01851" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "2" WHERE `ZIP` = "01720" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "1" WHERE `ZIP` = "02351" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "3" WHERE `ZIP` = "02743" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "4" WHERE `ZIP` = "01220" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "5" WHERE `ZIP` = "01001" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "6" WHERE `ZIP` = "01230" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "7" WHERE `ZIP` = "01913" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "8" WHERE `ZIP` = "01002" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "9" WHERE `ZIP` = "01810" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "10" WHERE `ZIP` = "02474" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "11" WHERE `ZIP` = "01431" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "12" WHERE `ZIP` = "01330" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "13" WHERE `ZIP` = "01721" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "14" WHERE `ZIP` = "01331" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "15" WHERE `ZIP` = "02703" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "16" WHERE `ZIP` = "01501" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "17" WHERE `ZIP` = "02322" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "18" WHERE `ZIP` = "01433" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "19" WHERE `ZIP` = "02630" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "20" WHERE `ZIP` = "01005" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "21" WHERE `ZIP` = "01223" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "22" WHERE `ZIP` = "01730" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "23" WHERE `ZIP` = "01007" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "24" WHERE `ZIP` = "02019" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "25" WHERE `ZIP` = "02478" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "26" WHERE `ZIP` = "02779" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "27" WHERE `ZIP` = "01503" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "28" WHERE `ZIP` = "01337" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "29" WHERE `ZIP` = "01915" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "30" WHERE `ZIP` = "01821" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "31" WHERE `ZIP` = "01504" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "32" WHERE `ZIP` = "01008" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "33" WHERE `ZIP` = "01740" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "34" WHERE `ZIP` = "02134" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "35" WHERE `ZIP` = "02116" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "37" WHERE `ZIP` = "02114" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "38" WHERE `ZIP` = "02115" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "39" WHERE `ZIP` = "02215" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "40" WHERE `ZIP` = "02115" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "41" WHERE `ZIP` = "02135" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "43" WHERE `ZIP` = "02111" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "44" WHERE `ZIP` = "02116" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "45" WHERE `ZIP` = "02124" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "46" WHERE `ZIP` = "02109" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "47" WHERE `ZIP` = "02128" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "48" WHERE `ZIP` = "02215" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "49" WHERE `ZIP` = "02110" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "50" WHERE `ZIP` = "02210" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "51" WHERE `ZIP` = "02108" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "52" WHERE `ZIP` = "02130" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "53" WHERE `ZIP` = "02215" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "54" WHERE `ZIP` = "02111" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "55" WHERE `ZIP` = "02210" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "56" WHERE `ZIP` = "02120" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "57" WHERE `ZIP` = "02113" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "58" WHERE `ZIP` = "02115" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "59" WHERE `ZIP` = "02113" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "60" WHERE `ZIP` = "02120" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "404" WHERE `ZIP` = "02120" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "61" WHERE `ZIP` = "02210" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "62" WHERE `ZIP` = "02127" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "63" WHERE `ZIP` = "02218" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "64" WHERE `ZIP` = "02115" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "65" WHERE `ZIP` = "02214" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "66" WHERE `ZIP` = "02114" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "67" WHERE `ZIP` = "02132" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "68" WHERE `ZIP` = "02532" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "69" WHERE `ZIP` = "01719" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "70" WHERE `ZIP` = "01921" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "71" WHERE `ZIP` = "01505" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "72" WHERE `ZIP` = "02184" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "73" WHERE `ZIP` = "02631" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "74" WHERE `ZIP` = "02324" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "75" WHERE `ZIP` = "01010" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "76" WHERE `ZIP` = "02403" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "77" WHERE `ZIP` = "01506" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "78" WHERE `ZIP` = "02446" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "79" WHERE `ZIP` = "01338" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "80" WHERE `ZIP` = "01803" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "81" WHERE `ZIP` = "02138" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "82" WHERE `ZIP` = "02021" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "84" WHERE `ZIP` = "02330" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "85" WHERE `ZIP` = "01339" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "86" WHERE `ZIP` = "02129" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "87" WHERE `ZIP` = "02633" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "88" WHERE `ZIP` = "01824" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "89" WHERE `ZIP` = "02150" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "90" WHERE `ZIP` = "01225" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "91" WHERE `ZIP` = "01011" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "92" WHERE `ZIP` = "01012" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "93" WHERE `ZIP` = "01020" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "94" WHERE `ZIP` = "02535" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "95" WHERE `ZIP` = "01247" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "96" WHERE `ZIP` = "01510" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "97" WHERE `ZIP` = "02025" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "98" WHERE `ZIP` = "01340" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "99" WHERE `ZIP` = "01742" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "100" WHERE `ZIP` = "01341" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "101" WHERE `ZIP` = "01026" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "102" WHERE `ZIP` = "01226" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "103" WHERE `ZIP` = "01923" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "104" WHERE `ZIP` = "02714" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "105" WHERE `ZIP` = "02026" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "106" WHERE `ZIP` = "01342" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "107" WHERE `ZIP` = "02638" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "108" WHERE `ZIP` = "02715" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "109" WHERE `ZIP` = "01516" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "110" WHERE `ZIP` = "02030" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "111" WHERE `ZIP` = "01826" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "112" WHERE `ZIP` = "01571" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "113" WHERE `ZIP` = "01827" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "114" WHERE `ZIP` = "02331" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "116" WHERE `ZIP` = "02333" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "117" WHERE `ZIP` = "01515" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "118" WHERE `ZIP` = "01028" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "119" WHERE `ZIP` = "02642" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "120" WHERE `ZIP` = "01027" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "121" WHERE `ZIP` = "02334" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "122" WHERE `ZIP` = "02539" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "123" WHERE `ZIP` = "01230" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "124" WHERE `ZIP` = "01344" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "125" WHERE `ZIP` = "01929" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "126" WHERE `ZIP` = "02149" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "127" WHERE `ZIP` = "02719" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "128" WHERE `ZIP` = "02720" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "129" WHERE `ZIP` = "02540" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "130" WHERE `ZIP` = "01420" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "131" WHERE `ZIP` = "01247" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "132" WHERE `ZIP` = "02035" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "133" WHERE `ZIP` = "01701" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "134" WHERE `ZIP` = "02038" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "135" WHERE `ZIP` = "02702" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "136" WHERE `ZIP` = "01440" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "137" WHERE `ZIP` = "02535" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "138" WHERE `ZIP` = "01833" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "139" WHERE `ZIP` = "01376" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "140" WHERE `ZIP` = "01930" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "141" WHERE `ZIP` = "01032" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "143" WHERE `ZIP` = "01519" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "144" WHERE `ZIP` = "01033" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "145" WHERE `ZIP` = "01034" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "146" WHERE `ZIP` = "01230" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "147" WHERE `ZIP` = "01301" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "148" WHERE `ZIP` = "01450" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "149" WHERE `ZIP` = "01834" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "150" WHERE `ZIP` = "01035" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "151" WHERE `ZIP` = "02338" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "152" WHERE `ZIP` = "01936" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "153" WHERE `ZIP` = "01036" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "154" WHERE `ZIP` = "01237" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "155" WHERE `ZIP` = "02339" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "156" WHERE `ZIP` = "02341" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "157" WHERE `ZIP` = "01037" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "158" WHERE `ZIP` = "01451" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "159" WHERE `ZIP` = "02645" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "160" WHERE `ZIP` = "01038" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "161" WHERE `ZIP` = "01936" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "162" WHERE `ZIP` = "01936" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "163" WHERE `ZIP` = "01036" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "164" WHERE `ZIP` = "01237" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "165" WHERE `ZIP` = "02339" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "166" WHERE `ZIP` = "02341" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "167" WHERE `ZIP` = "01037" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "168" WHERE `ZIP` = "01451" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "169" WHERE `ZIP` = "02645" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "170" WHERE `ZIP` = "01040" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "171" WHERE `ZIP` = "01747" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "172" WHERE `ZIP` = "01748" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "173" WHERE `ZIP` = "01452" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "174" WHERE `ZIP` = "01749" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "175" WHERE `ZIP` = "02045" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "176" WHERE `ZIP` = "01050" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "177" WHERE `ZIP` = "02136" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "178" WHERE `ZIP` = "01938" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "179" WHERE `ZIP` = "02881" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "180" WHERE `ZIP` = "02364" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "181" WHERE `ZIP` = "02347" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "182" WHERE `ZIP` = "01523" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "183" WHERE `ZIP` = "01237" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "184" WHERE `ZIP` = "01843" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "185" WHERE `ZIP` = "01238" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "186" WHERE `ZIP` = "01524" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "187" WHERE `ZIP` = "01240" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "188" WHERE `ZIP` = "01453" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "189" WHERE `ZIP` = "01054" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "190" WHERE `ZIP` = "02420" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "191" WHERE `ZIP` = "01301" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "192" WHERE `ZIP` = "01773" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "196" WHERE `ZIP` = "01056" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "197" WHERE `ZIP` = "01462" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "198" WHERE `ZIP` = "01904" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "199" WHERE `ZIP` = "01940" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "200" WHERE `ZIP` = "02148" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "201" WHERE `ZIP` = "01944" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "202" WHERE `ZIP` = "02048" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "203" WHERE `ZIP` = "01945" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "204" WHERE `ZIP` = "02738" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "205" WHERE `ZIP` = "01752" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "206" WHERE `ZIP` = "02050" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "207" WHERE `ZIP` = "02575" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "208" WHERE `ZIP` = "02649" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "210" WHERE `ZIP` = "02739" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "211" WHERE `ZIP` = "01754" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "212" WHERE `ZIP` = "02052" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "213" WHERE `ZIP` = "02153" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "214" WHERE `ZIP` = "02053" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "215" WHERE `ZIP` = "02176" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "216" WHERE `ZIP` = "01756" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "217" WHERE `ZIP` = "01860" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "218" WHERE `ZIP` = "01844" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "219" WHERE `ZIP` = "02346" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "220" WHERE `ZIP` = "01243" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "221" WHERE `ZIP` = "01949" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "222" WHERE `ZIP` = "01757" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "223" WHERE `ZIP` = "01527" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "224" WHERE `ZIP` = "02054" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "225" WHERE `ZIP` = "01529" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "226" WHERE `ZIP` = "02186" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "227" WHERE `ZIP` = "01350" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "228" WHERE `ZIP` = "01057" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "229" WHERE `ZIP` = "01351" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "230" WHERE `ZIP` = "01245" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "231" WHERE `ZIP` = "01085" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "232" WHERE `ZIP` = "01258" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "233" WHERE `ZIP` = "01908" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "234" WHERE `ZIP` = "02554" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "235" WHERE `ZIP` = "01760" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "236" WHERE `ZIP` = "02492" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "237" WHERE `ZIP` = "01237" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "238" WHERE `ZIP` = "02740" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "239" WHERE `ZIP` = "01531" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "240" WHERE `ZIP` = "01230" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "241" WHERE `ZIP` = "01355" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "242" WHERE `ZIP` = "01985" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "243" WHERE `ZIP` = "01950" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "244" WHERE `ZIP` = "02459" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "245" WHERE `ZIP` = "02056" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "246" WHERE `ZIP` = "01247" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "247" WHERE `ZIP` = "02760" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "248" WHERE `ZIP` = "01535" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "249" WHERE `ZIP` = "01864" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "250" WHERE `ZIP` = "01060" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "251" WHERE `ZIP` = "01532" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "252" WHERE `ZIP` = "01534" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "253" WHERE `ZIP` = "01354" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "254" WHERE `ZIP` = "02766" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "255" WHERE `ZIP` = "02061" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "256" WHERE `ZIP` = "02062" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "257" WHERE `ZIP` = "02557" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "258" WHERE `ZIP` = "01068" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "259" WHERE `ZIP` = "01355" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "260" WHERE `ZIP` = "02653" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "261" WHERE `ZIP` = "01253" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "262" WHERE `ZIP` = "01540" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "263" WHERE `ZIP` = "01069" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "264" WHERE `ZIP` = "01612" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "265" WHERE `ZIP` = "01960" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "266" WHERE `ZIP` = "01002" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "267" WHERE `ZIP` = "02359" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "268" WHERE `ZIP` = "01463" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "269" WHERE `ZIP` = "01235" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "270" WHERE `ZIP` = "01366" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "271" WHERE `ZIP` = "01331" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "272" WHERE `ZIP` = "01201" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "273" WHERE `ZIP` = "01070" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "274" WHERE `ZIP` = "02762" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "275" WHERE `ZIP` = "02360" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "276" WHERE `ZIP` = "02367" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "277" WHERE `ZIP` = "01541" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "278" WHERE `ZIP` = "02657" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "279" WHERE `ZIP` = "02169" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "280" WHERE `ZIP` = "02368" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "281" WHERE `ZIP` = "02768" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "282" WHERE `ZIP` = "01867" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "283" WHERE `ZIP` = "02769" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "284" WHERE `ZIP` = "02151" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "285" WHERE `ZIP` = "01254" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "286" WHERE `ZIP` = "02770" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "287" WHERE `ZIP` = "02370" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "288" WHERE `ZIP` = "01966" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "289" WHERE `ZIP` = "01367" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "290" WHERE `ZIP` = "01969" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "291" WHERE `ZIP` = "01368" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "292" WHERE `ZIP` = "01071" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "293" WHERE `ZIP` = "01543" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "294" WHERE `ZIP` = "01970" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "295" WHERE `ZIP` = "01950" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "296" WHERE `ZIP` = "01255" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "297" WHERE `ZIP` = "02563" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "298" WHERE `ZIP` = "01906" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "299" WHERE `ZIP` = "01256" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "300" WHERE `ZIP` = "02066" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "301" WHERE `ZIP` = "02771" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "302" WHERE `ZIP` = "02067" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "303" WHERE `ZIP` = "01257" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "304" WHERE `ZIP` = "01370" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "305" WHERE `ZIP` = "01770" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "306" WHERE `ZIP` = "01464" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "307" WHERE `ZIP` = "01545" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "308" WHERE `ZIP` = "01072" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "309" WHERE `ZIP` = "02725" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "310" WHERE `ZIP` = "02143" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "311" WHERE `ZIP` = "01075" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "312" WHERE `ZIP` = "01073" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "313" WHERE `ZIP` = "01772" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "314" WHERE `ZIP` = "01550" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "315" WHERE `ZIP` = "01077" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "316" WHERE `ZIP` = "01562" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "317" WHERE `ZIP` = "01108" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "318" WHERE `ZIP` = "01564" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "319" WHERE `ZIP` = "01262" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "320" WHERE `ZIP` = "02180" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "321" WHERE `ZIP` = "02072" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "322" WHERE `ZIP` = "01775" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "323" WHERE `ZIP` = "01566" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "324" WHERE `ZIP` = "01776" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "325" WHERE `ZIP` = "01375" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "326" WHERE `ZIP` = "01590" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "327" WHERE `ZIP` = "01907" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "328" WHERE `ZIP` = "02777" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "329" WHERE `ZIP` = "02780" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "330" WHERE `ZIP` = "01468" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "331" WHERE `ZIP` = "01876" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "332" WHERE `ZIP` = "02568" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "333" WHERE `ZIP` = "01034" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "334" WHERE `ZIP` = "01983" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "335" WHERE `ZIP` = "01474" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "336" WHERE `ZIP` = "02666" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "337" WHERE `ZIP` = "01879" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "338" WHERE `ZIP` = "01264" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "339" WHERE `ZIP` = "01568" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "340" WHERE `ZIP` = "01569" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "341" WHERE `ZIP` = "01880" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "342" WHERE `ZIP` = "02081" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "343" WHERE `ZIP` = "02254" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "344" WHERE `ZIP` = "01082" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "345" WHERE `ZIP` = "02571" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "346" WHERE `ZIP` = "01092" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "347" WHERE `ZIP` = "01378" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "348" WHERE `ZIP` = "01223" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "349" WHERE `ZIP` = "02472" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "350" WHERE `ZIP` = "01778" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "351" WHERE `ZIP` = "01570" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "352" WHERE `ZIP` = "02481" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "353" WHERE `ZIP` = "02667" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "354" WHERE `ZIP` = "01379" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "355" WHERE `ZIP` = "01984" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "356" WHERE `ZIP` = "01581" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "357" WHERE `ZIP` = "01085" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "358" WHERE `ZIP` = "01886" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "359" WHERE `ZIP` = "01027" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "360" WHERE `ZIP` = "01473" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "361" WHERE `ZIP` = "02193" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "362" WHERE `ZIP` = "02790" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "363" WHERE `ZIP` = "02090" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "364" WHERE `ZIP` = "02188" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "365" WHERE `ZIP` = "02382" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "366" WHERE `ZIP` = "01887" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "367" WHERE `ZIP` = "01475" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "368" WHERE `ZIP` = "01890" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "369" WHERE `ZIP` = "02152" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "370" WHERE `ZIP` = "01801" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "371" WHERE `ZIP` = "01605" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "372" WHERE `ZIP` = "01098" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "373" WHERE `ZIP` = "02093" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "374" WHERE `ZIP` = "02675" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "375" WHERE `ZIP` = "03110" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "376" WHERE `ZIP` = "03038" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "378" WHERE `ZIP` = "02116" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "379" WHERE `ZIP` = "02116" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "381" WHERE `ZIP` = "02215" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "382" WHERE `ZIP` = "02110" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "383" WHERE `ZIP` = "03101" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "384" WHERE `ZIP` = "03246" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "385" WHERE `ZIP` = "02379" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "386" WHERE `ZIP` = "02137" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "387" WHERE `ZIP` = "02108" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "388" WHERE `ZIP` = "02126" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "389" WHERE `ZIP` = "02109" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "390" WHERE `ZIP` = "03060" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "391" WHERE `ZIP` = "01741" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "392" WHERE `ZIP` = "01835" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "393" WHERE `ZIP` = "02558" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "394" WHERE `ZIP` = "03079" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "395" WHERE `ZIP` = "02124" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "396" WHERE `ZIP` = "02901" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "397" WHERE `ZIP` = "01845" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "398" WHERE `ZIP` = "02114" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "399" WHERE `ZIP` = "02655" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "400" WHERE `ZIP` = "02109" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "401" WHERE `ZIP` = "02864" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "403" WHERE `ZIP` = "01009" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "405" WHERE `ZIP` = "02921" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "406" WHERE `ZIP` = "02919" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "407" WHERE `ZIP` = "02897" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "411" WHERE `ZIP` = "02138" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "412" WHERE `ZIP` = "02140" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "413" WHERE `ZIP` = "02138" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "414" WHERE `ZIP` = "02139" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "415" WHERE `ZIP` = "02139" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "416" WHERE `ZIP` = "02138" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "417" WHERE `ZIP` = "02141" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "418" WHERE `ZIP` = "02138" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "419" WHERE `ZIP` = "02139" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "420" WHERE `ZIP` = "02142" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "421" WHERE `ZIP` = "02139" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "422" WHERE `ZIP` = "02140" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "423" WHERE `ZIP` = "02140" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "424" WHERE `ZIP` = "02139" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "425" WHERE `ZIP` = "02138" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "426" WHERE `ZIP` = "02138" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "428" WHERE `ZIP` = "02144" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "427" WHERE `ZIP` = "02144" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "429" WHERE `ZIP` = "02145" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "430" WHERE `ZIP` = "02143" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "431" WHERE `ZIP` = "02144" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "432" WHERE `ZIP` = "02143" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "433" WHERE `ZIP` = "02143" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "434" WHERE `ZIP` = "02144" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "435" WHERE `ZIP` = "02155" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "436" WHERE `ZIP` = "02143" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "437" WHERE `ZIP` = "02144" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "438" WHERE `ZIP` = "02145" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "439" WHERE `ZIP` = "02145" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "440" WHERE `ZIP` = "02143" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "441" WHERE `ZIP` = "02138" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "442" WHERE `ZIP` = "02138" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "443" WHERE `ZIP` = "02138" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "444" WHERE `ZIP` = "02140" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "445" WHERE `ZIP` = "02138" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "447" WHERE `ZIP` = "03857" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "446" WHERE `ZIP` = "03868" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "448" WHERE `ZIP` = "02466" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "449" WHERE `ZIP` = "02467" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "452" WHERE `ZIP` = "02161" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "453" WHERE `ZIP` = "02162" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "450" WHERE `ZIP` = "02459" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "451" WHERE `ZIP` = "02458" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "455" WHERE `ZIP` = "02460" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "456" WHERE `ZIP` = "02495" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "457" WHERE `ZIP` = "02459" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "458" WHERE `ZIP` = "02459" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "454" WHERE `ZIP` = "02464" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "459" WHERE `ZIP` = "02468" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "460" WHERE `ZIP` = "02465" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "461" WHERE `ZIP` = "02446" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "462" WHERE `ZIP` = "02445" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "463" WHERE `ZIP` = "02445" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "464" WHERE `ZIP` = "02447" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "466" WHERE `ZIP` = "02467" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "467" WHERE `ZIP` = "02446" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "468" WHERE `ZIP` = "02446" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "469" WHERE `ZIP` = "02445" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "470" WHERE `ZIP` = "02446" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "471" WHERE `ZIP` = "02446" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "472" WHERE `ZIP` = "02466" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "473" WHERE `ZIP` = "02446" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "474" WHERE `ZIP` = "02446" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "475" WHERE `ZIP` = "02445" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "476" WHERE `ZIP` = "02467" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "477" WHERE `ZIP` = "02445" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "478" WHERE `ZIP` = "02467" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "479" WHERE `ZIP` = "02446" AND CLI = "1041";
+UPDATE `CLASS` SET LOC = "480" WHERE `ZIP` = "02445" AND CLI = "1041";
+
+// end RJ LOC from ZIP //
+
+
+
+
+
+echo $msg;
+
+?>
+
+	
+
+
+

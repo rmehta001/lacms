@@ -1,0 +1,13 @@
+<!--
+BODY
+DIV 
+.splashtext { font-family: Verdana; font-size: 10px}
+.contenttext { font-family: Verdana; font-size: 10px }
+.contenttext:first-letter { font-size:105%; }
+.contentnav { font-family: Verdana; font-size: 8px; color: light-grey }
+.menu { font-family: Verdana; font-size:12px; text-decoration: none  }
+.topic { font-family: Verdana; font-size:14px; text-decoration:none;   }
+A:link {text-decoration: none; color: black}
+A:visited {color: black}
+A:hover   {text-decoration: underline; color: grey}
+-->

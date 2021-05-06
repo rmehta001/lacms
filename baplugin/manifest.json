@@ -1,0 +1,35 @@
+{
+  // Required
+  "manifest_version": 2,
+  "name": "Boston Apartments Poster",
+  "version": "0.1",
+
+  "description": "LACMS ad management plugin.",
+  // "icons": {...},
+
+  // set it up as a browser wide
+  "browser_action": {
+    "default_icon": "bapts.png",
+    "default_popup": "bosapts_popup.html"
+  },
+
+  "icons": {
+    "16": "bapts.png",
+    "48": "bapts.png",
+    "128": "bapts.png"
+  },
+
+  "background": {
+    "scripts": ["main_background.js"]
+
+    // Recommended to make it an event page?
+    //    "persistent": false
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.bostonapartments.com/plugin/?*"],
+      "js": ["jquery-1.11.3.js", "main_contentscript.js"]
+    }
+  ],
+  "permissions": ["tabs", "http://*/", "https://*/", "storage"]
+}

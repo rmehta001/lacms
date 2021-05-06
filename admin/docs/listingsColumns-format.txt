@@ -1,0 +1,14 @@
+listings view file format
+Columns separated by ',' and vars by '_'
+
+0: type[a|f] action or field
+1: value[string] either field name or action name
+2: width[int]  column width
+3: name[string] display name
+4: image image to use if false or null(also determines if an image instead of value is used.)
+5: image to use if true or less than 1.
+6: image to use if less than 2
+7: image to use if < 3 
+8: image to use if < 4 
+9: and so on.....
+

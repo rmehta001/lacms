@@ -1,0 +1,120 @@
+<?php
+//BEGIN uploadDo //
+$mime = trim($userfile_type);
+$cid = $_POST['cid'];
+$desc = strip_tags($_POST['desc']);
+                
+$fileNameSplit = preg_split ('/\./', $userfile_name);
+$arr_int=count($fileNameSplit)-1;
+$ext = $fileNameSplit[$arr_int];
+$result=false;
+
+if ($ext=="jpg" | $ext=="gif" | $ext=="jpeg" | $ext=="png" | $ext=="JPG" | $ext=="GIF" | $ext=="JPEG" | $ext=="PNG")  {
+
+	//SAVE FILE
+	$f=basename($userfile);
+	$saved_file=$picsTempDir.$f."_lacms_saved.".$ext;
+	if (!move_uploaded_file($userfile, $saved_file)) {
+		$msg = "Your picture has not been uploaded. Please make sure the file name is vaild, and the size is < 2MB.";
+		$result=false;
+	}
+	else
+	{
+		$result=true;
+	}
+	$output=exec("/usr/bin/identify ".$saved_file);
+	preg_match('/\S+lacms_saved\.\S+\s+\S+\s+(\d+)x(\d+)\D+(.*)/', $output, $matches);
+	$x=$matches[1];
+	$y=$matches[2];
+	$display=basename($saved_file);
+	$medium_file=preg_replace('/lacms_saved/', 'lacms_saved_m', $saved_file);
+	$display_medium = basename($medium_file);
+	$small_file=preg_replace('/lacms_saved/', 'lacms_saved_s', $saved_file);
+	$display_small = basename($small_file);
+	if ( $x <= 0 | $y <= 0 )
+	{
+		$msg = "Unable to process picture information";
+		$msg_err = true;
+		$page = "upload";
+		$result=false;
+	}
+	elseif (($x < $y) |( $x == $y))
+	{
+		if ( $y > 450 )
+		{
+			$ratio=$y/450;
+			$y=450;
+			$x = floor ( $x / $ratio);
+			$command = "/usr/bin/convert -resize ".$x."x".$y." ";
+			$command = $command.$saved_file." ".$medium_file;
+			echo $command;
+			$output=exec($command);
+		}
+		else
+		{
+			if(!copy($saved_file, $medium_file))
+			{	$result=flase;	}
+		}
+		if ( $y > 250 )
+		{
+			$ratio=$y/250;
+			$y=250;
+			 $x = floor ( $x / $ratio);
+                        $command = "/usr/bin/convert -resize ".$x."x".$y." ";
+                        $command = $command.$saved_file." ".$small_file;
+                        $output=exec($command);
+		}
+		else
+		{
+                        if(!copy($saved_file, $small_file))
+                        {       $result=flase;  }
+		}
+	}
+	elseif ($x > $y)
+	{
+		if ( $x > 450 )
+		{
+			$ratio=$x/450;
+			$x=450;
+			$y = floor ( $y / $ratio );
+			$command = "convert -resize ".$x."x".$y." ";
+			$command = $command.$saved_file." ".$medium_file;
+			$output=exec($command);
+		}
+		else
+		{
+			if(!copy($saved_file, $medium_file))
+                        {       $result=flase;  }
+		}
+		if ( $x > 250 )
+                {
+                        $ratio=$x/250;
+                        $x=250;
+                        $y = floor ( $y / $ratio );
+                        $command = "convert -resize ".$x."x".$y." ";
+                        $command = $command.$saved_file." ".$small_file;
+                        $output=exec($command);
+		}
+		else
+		{
+                        if(!copy($saved_file, $small_file))
+                        {       $result=flase;  }
+                }
+	}
+	else
+	{ $result=false; }
+
+	if ($result==false)
+	{
+		$page = "upload";
+		$msg_err = true;
+	}else {
+		$page="uploadPreview";
+	}
+}else {
+	$page = "upload";
+	$msg = "Your picture has not been uploaded. Please make sure the file name is vaild, and the size is < 2MB.";
+	$msg_err = true;
+}
+//END uploadDo //
+?>

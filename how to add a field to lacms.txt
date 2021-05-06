@@ -1,0 +1,14 @@
+to add a new field to lacms
+
+New feature or amenity
+
+pages:
+app_core.php
+global.php
+listings.php
+adlEdit.php
+database lacms add new to end of VALUE_DEFINE
+
+If new text or other type of field same plus adlEditDo.php in ops
+
+Also look at main.js for field changing ops

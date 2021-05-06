@@ -1,0 +1,25 @@
+<?php
+
+$find = $_POST['find'];
+$replace = $_POST['replace'];
+
+if ($find) {
+	$affected = 0;
+	$quStrGetAds = "select * from CLASS";
+	$quGetAds = mysqli_query($dbh, $quStrGetAds) or die (mysqli_error($dbh));
+	while ($rowGetAds = mysqli_fetch_object($quGetAds)) {
+		$body = $rowGetAds->BODY;
+		$id =   $rowGetAds->CID;
+		$found = strpos ($find, $body);
+		if ($found) {
+			$newBody = str_replace ($find, $replace, $body);
+			$quStrUpdateAd = "update CLASS set BODY='$newBody' where CID='$id'";
+			$quUpdateAd = mysqli_query($dbh, $quStrUpdateAd) or die (mysqli_error($dbh));
+			$affected++;
+		}
+	}
+$msg = "Global Replace completed, $affected ads affected.";
+
+}
+	
+?>

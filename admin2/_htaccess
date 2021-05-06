@@ -1,0 +1,8 @@
+AuthUserFile /usr/home/eboyer/public_html/bostonapartments/lacms/admin/.htpasswd
+AuthGroupFile /dev/null
+AuthName "LACMS-Admin Area"
+AuthType Basic
+
+<Limit GET POST>
+require valid-user
+</Limit>

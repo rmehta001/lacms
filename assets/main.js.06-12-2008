@@ -1,0 +1,327 @@
+<script Language="JavaScript">
+<!--
+	
+		var type = '<?php echo $rowGetAd->TYPE;?>';
+		var ServerOp = '<?php echo $op;?>';
+		var ServerPage = '<?php echo $page;?>';
+		var adlEditView = "simple";
+		window.setTimeout("window.navigate('../logout.php')", 1800000);
+ 		
+ 		function syncMeSelect (element1, element2) {
+ 			//document.getElementById(element2).selectedIndex = document.getElementById(element1).selectedIndex;
+ 		}
+ 		
+ 		function validateAdlEdit (view) {
+ 			if (view=="simple") {
+ 				document.getElementById("fullTYPE").selectedIndex = document.getElementById("simpleTYPE").selectedIndex;
+ 				document.getElementById("fullLOC").selectedIndex = document.getElementById("simpleLOC").selectedIndex;
+ 				document.getElementById("fullROOMS").selectedIndex = document.getElementById("simpleROOMS").selectedIndex;
+ 				document.getElementById("fullBATH").selectedIndex = document.getElementById("simpleBATH").selectedIndex;
+ 				if (document.getElementById("simpleTYPE").selectedIndex == 1 || document.getElementById("simpleTYPE").selectedIndex == 2) {
+ 					foo = "bar";
+ 				}else {
+ 					document.getElementById("fullNOFEE").selectedIndex = document.getElementById("simpleNOFEE").selectedIndex;
+ 				}
+ 				document.getElementById("fullbbbMonth").selectedIndex = document.getElementById("simplebbbMonth").selectedIndex;
+ 				document.getElementById("fullbbbDay").selectedIndex = document.getElementById("simplebbbDay").selectedIndex;
+ 				document.getElementById("fullbbbYear").selectedIndex = document.getElementById("simplebbbYear").selectedIndex;
+ 				document.getElementById("fullPETSA").selectedIndex = document.getElementById("simplePETSA").selectedIndex;
+ 				document.getElementById("fullLANDLORD").selectedIndex = document.getElementById("simpleLANDLORD").selectedIndex;
+ 				document.getElementById("fullSTATUS").checked = document.getElementById("simpleSTATUS").checked;
+ 				document.getElementById("fullPRICE").value = document.getElementById("simplePRICE").value;
+ 				document.getElementById("fullSTREET_NUM").value = document.getElementById("simpleSTREET_NUM").value;
+ 				document.getElementById("fullSTREET").value = document.getElementById("simpleSTREET").value;
+ 				document.getElementById("fullAPT").value = document.getElementById("simpleAPT").value;
+ 				document.getElementById("fullFLOOR").value = document.getElementById("simpleFLOOR").value;
+ 				document.getElementById("fullZIP").value = document.getElementById("simpleZIP").value;
+ 				document.getElementById("fullPARKING_NUM").selectedIndex = document.getElementById("simplePARKING_NUM").selectedIndex;
+ 				document.getElementById("fullPARKING_TYPE").selectedIndex = document.getElementById("simplePARKING_TYPE").selectedIndex;
+ 				document.getElementById("fullPARKING_COST").value = document.getElementById("simplePARKING_COST").value;
+ 				price = document.getElementById("fullPRICE");
+ 				body = document.getElementById("simpleBODY");
+ 				loc = document.getElementById("simpleLOC");
+ 			}else {
+ 				body = document.getElementById("simpleBODY");
+ 				price = document.getElementById("fullPRICE");
+ 				loc = document.getElementById("fullLOC");
+ 			}
+ 			
+ 			
+ 			adlEdit = document.forms.adlEditForm;
+ 			
+ 			
+ 			
+ 			
+
+ 			if (loc.selectedIndex == 0) {
+ 				alert ("Please choose a Location for the ad.");
+ 			}else{
+ 				body.value = body.value.replace("Type your ad here.", "");
+ 				price.value = price.value.replace(",", "");
+ 				price.value = price.value.replace("$", "");
+ 				adlEdit.submit();
+ 			}
+ 		}
+ 			
+ 			/*
+ 			
+ 			
+ 			if (view == "simple") {
+ 				
+ 			}else if (view=="full") {
+ 				adlEdit = document.forms.adlEditFormFull;
+ 				price = document.getElementById("simplePRICE");
+ 				loc = document.getElementById("fullLOC");
+ 				if (loc.selectedIndex == 0) {
+ 					alert ("Please choose a Location for the ad.");
+ 				}else {
+ 					price.value = price.value.replace(",", "");
+ 					price.value = price.value.replace("$", "");
+ 					adlEdit.submit();
+ 				}
+ 			}
+ 			
+ 		}
+ 		*/
+ 			
+ 			
+ 			
+ 		
+ 		function tabNav (page, cid) {
+ 			//display name of page//
+ 			if (page=="adlEdit") {
+ 				pageName = "Ad/Listing";
+ 			}else if (page=="managePics") {
+ 				pageName = "Pictures";
+ 			}else if (page=="manageListingDeals") {
+ 				pageName = "Deal Sheets";
+ 			}else if (page=="printOuts") {
+ 				pageName = "Printouts";
+ 			}
+ 				
+ 				
+ 				
+ 			if (ServerPage != "adlEdit") {
+ 				window.location = ("<?php echo $PHP_SELF;?>?op=" + page + "&cid=" + cid);
+ 			}else {
+ 				if (cid == 0) {
+ 					//ad has not been saved and needs to.//
+ 					if (confirm("Click ok to save your work and navigate to " + pageName + ".")) {
+ 						document.getElementById("adlEditFormNav").value = page;
+ 						validateAdlEdit(adlEditView);
+ 						
+ 					}
+ 				}else {
+ 					if (confirm ("Would you like to save your changes?")) {
+ 						document.getElementById("adlEditFormNav").value = page;
+ 						validateAdlEdit(adlEditView);
+ 					}else {
+ 						window.location = ("<?php echo $PHP_SELF;?>?op=" + page + "&cid=" + cid);
+ 					}
+ 				}
+ 			}
+ 		}
+ 		
+ 		function setFlagFee (this_type) {
+ 			if (this_type==1 ||this_type==2) {
+ 				document.getElementById("simpleSTATUS_SALEspan").style.display = "inline";
+				document.getElementById("saleSpec").style.display = "inline";
+				document.getElementById("rentalSpec").style.display = "none";
+				document.getElementById("simpleNOFEEspan").style.display = "none";
+			}else {
+				document.getElementById("simpleSTATUS_SALEspan").style.display = "none";
+				document.getElementById("simpleNOFEEspan").style.display = "inline";
+				document.getElementById("saleSpec").style.display = "none";
+				document.getElementById("rentalSpec").style.display = "inline";
+			}
+			type = this_type;
+		}
+ 		function selectView (view) {
+ 			//document.adlEditView = view;
+ 			if (view=="simple") {
+ 				document.getElementById("fullArea").style.display = "none";
+ 				document.getElementById("fullSel").src = "../assets/images/wht_spacer.gif";
+ 				document.getElementById("simpleSel").src = "../assets/images/select.gif";
+ 				document.getElementById("selTitle").src = "../assets/images/simple_t.gif";
+ 				document.getElementById("simpleTYPE").selectedIndex = document.getElementById("fullTYPE").selectedIndex;
+ 				document.getElementById("simpleLOC").selectedIndex = document.getElementById("fullLOC").selectedIndex;
+ 				document.getElementById("simpleROOMS").selectedIndex = document.getElementById("fullROOMS").selectedIndex;
+ 				document.getElementById("simpleBATH").selectedIndex = document.getElementById("fullBATH").selectedIndex;
+ 				document.getElementById("simpleLANDLORD").selectedIndex = document.getElementById("fullLANDLORD").selectedIndex;
+ 				document.getElementById("simplePARKING_NUM").selectedIndex = document.getElementById("fullPARKING_NUM").selectedIndex;
+ 				document.getElementById("simplePARKING_TYPE").selectedIndex = document.getElementById("fullPARKING_TYPE").selectedIndex;
+ 				document.getElementById("simplePARKING_COST").value = document.getElementById("fullPARKING_COST").value;
+ 				
+ 				if (type == 1 || type == 4 || type == 5 || !type){ 
+ 					document.getElementById("simpleNOFEE").selectedIndex = document.getElementById("fullNOFEE").selectedIndex;
+ 				}else if (type == 2 || type == 3 || !type) {
+ 					document.getElementById("simpleSTATUS_SALE").selectedIndex = document.getElementById("fullSTATUS_SALE").selectedIndex;
+ 				}
+ 				document.getElementById("simpleSTATUS").checked = document.getElementById("fullSTATUS").checked;
+ 				document.getElementById("simplebbbMonth").selectedIndex = document.getElementById("fullbbbMonth").selectedIndex;
+ 				document.getElementById("simplebbbDay").selectedIndex = document.getElementById("fullbbbDay").selectedIndex;
+ 				document.getElementById("simplebbbYear").selectedIndex = document.getElementById("fullbbbYear").selectedIndex;
+ 				document.getElementById("simplePRICE").value = document.getElementById("fullPRICE").value;
+ 				document.getElementById("simpleSTREET_NUM").value = document.getElementById("fullSTREET_NUM").value;
+ 				document.getElementById("simpleSTREET").value = document.getElementById("fullSTREET").value;
+ 				document.getElementById("simpleAPT").value = document.getElementById("fullAPT").value;
+ 				document.getElementById("simpleFLOOR").value = document.getElementById("fullFLOOR").value;
+ 				document.getElementById("simpleZIP").value = document.getElementById("fullZIP").value;
+ 				document.getElementById("adlEditFormNav").value = "sel";
+ 				document.getElementById("simpleArea").style.display = "block";
+ 			}else if (view=="full") {
+ 				document.getElementById("simpleArea").style.display = "none";
+ 				document.getElementById("simpleSel").src = "../assets/images/wht_spacer.gif";
+ 				document.getElementById("fullSel").src = "../assets/images/select.gif";
+ 				document.getElementById("selTitle").src = "../assets/images/full_t.gif";
+ 				document.getElementById("fullTYPE").selectedIndex = document.getElementById("simpleTYPE").selectedIndex;
+ 				document.getElementById("fullLOC").selectedIndex = document.getElementById("simpleLOC").selectedIndex;
+ 				document.getElementById("fullROOMS").selectedIndex = document.getElementById("simpleROOMS").selectedIndex;
+ 				document.getElementById("fullBATH").selectedIndex = document.getElementById("simpleBATH").selectedIndex;
+ 				document.getElementById("fullLANDLORD").selectedIndex = document.getElementById("simpleLANDLORD").selectedIndex;
+ 				if (type == 1 || !type) {
+ 					document.getElementById("fullNOFEE").selectedIndex = document.getElementById("simpleNOFEE").selectedIndex;
+ 				}else if (type == 2 || type == 3 || !type) {
+ 					document.getElementById("fullSTATUS_SALE").selectedIndex = document.getElementById("simpleSTATUS_SALE").selectedIndex;
+ 				}
+ 				document.getElementById("fullSTATUS").checked = document.getElementById("simpleSTATUS").checked;
+ 				document.getElementById("fullbbbMonth").selectedIndex = document.getElementById("simplebbbMonth").selectedIndex;
+ 				document.getElementById("fullbbbDay").selectedIndex = document.getElementById("simplebbbDay").selectedIndex;
+ 				document.getElementById("fullbbbYear").selectedIndex = document.getElementById("simplebbbYear").selectedIndex;
+ 				document.getElementById("fullPRICE").value = document.getElementById("simplePRICE").value;
+ 				document.getElementById("fullSTREET_NUM").value = document.getElementById("simpleSTREET_NUM").value;
+ 				document.getElementById("fullSTREET").value = document.getElementById("simpleSTREET").value;
+ 				document.getElementById("fullAPT").value = document.getElementById("simpleAPT").value;
+ 				document.getElementById("fullFLOOR").value = document.getElementById("simpleFLOOR").value;
+ 				document.getElementById("fullZIP").value = document.getElementById("simpleZIP").value;
+ 				document.getElementById("fullPARKING_NUM").selectedIndex = document.getElementById("simplePARKING_NUM").selectedIndex;
+ 				document.getElementById("fullPARKING_TYPE").selectedIndex = document.getElementById("simplePARKING_TYPE").selectedIndex;
+ 				document.getElementById("fullPARKING_COST").value = document.getElementById("simplePARKING_COST").value;
+ 				document.getElementById("adlEditFormNav").value = "listings";
+ 				document.getElementById("fullArea").style.display = "block";
+ 			}
+ 		}
+ 		
+ 		function popUp(url) {
+			window.open(url, 'subwin', 'width=560,height=495,resizable,scrollbars');
+			//name.moveTo(screen.width/2-250,screen.height/2-250);
+			//name.focus;
+		}
+ 		
+ 		function popUpPrintOut(url) {
+			window.open(url, 'printOut', 'width=530,height=700,resizable');
+			//name.moveTo(screen.width/2-250,screen.height/2-250);
+			//name.focus;
+		}
+		function popUpPrintOutPic(urld) {
+			window.open(urld, 'printOut', 'width=530,height=700,resizable,scrollbars');
+			//name.moveTo(screen.width/2-250,screen.height/2-250);
+			//name.focus;
+		}
+ 		
+ 		function scrollIt (_y) {
+ 			window.scrollTo (0, _y);
+ 		}
+ 		
+ 		 		
+ 		function print_screen(){                                       
+ 			if (!window.print){                                      
+ 				alert("You need newer browser to use this print button!")
+ 				return                                                   
+ 			}                                                        	
+                	window.print()                                           
+		}                                                        
+		function close_window() {
+			window.close();
+		}                                            
+                function CheckAll() {                                                       
+      			for (var i=0;i<document.moveform.elements.length;i++){                                                    
+         			var e = document.moveform.elements[i];            		
+         			if (e.name != "allbox"){
+            				e.checked = document.moveform.allbox.checked;  
+            			}
+            		}
+            	}   
+            	function addClient() {
+    			var s = window.document.addClientsToDeal.client_list;
+    			var d = window.document.addClientsToDeal.elements['selected_clients[]'];
+    			
+    			if (s.selectedIndex < 0) {
+    			    alert('You must select a client first.');
+    			    return false;
+    			} else {
+    			    for (var i = 0; i < s.length; i++) {
+    			        var item = s.options[i];
+    			        if (item.value == "") { continue; }
+    			        if (item.selected) {
+    			            d.options[d.length] = new Option(item.text, item.value);
+    			            s.options.remove(i);
+    			        }
+    			    }
+    			}
+    		}
+    		function removeClient() {
+    			var s = window.document.addClientsToDeal.client_list;     
+			var d = window.document.addClientsToDeal.elements['selected_clients[]'];
+			
+			if (d.selectedIndex < 0) {
+    			    alert('You must select a client to remove first.');
+    			    return false;
+    			}else {
+    			    for (var i = 0; i < d.length; i++) {
+    			        var item = d.options[i];
+    			        if (item.value == "") { continue; }
+    			        if (item.selected) {
+    			            s.options[s.length] = new Option(item.text, item.value);
+    			            d.options.remove(i);
+    			        }
+    			    }
+    			}
+    		}
+    		function select_clients() {
+    			var d = window.document.addClientsToDeal.elements['selected_clients[]'];
+    			for (var i = 0; i < d.length; i++) {
+    			        var item = d.options[i];
+    			        item.selected = true;
+    			}
+    		}
+    		function submit_selected_clients() {
+    			select_clients();
+    			var d = window.document.addClientsToDeal.elements['selected_clients[]'];
+    			if (d.selectedIndex < 0) {
+    			    alert('You must select at least on client to link to the deal.');
+    			    return false;
+    			}else {
+    				window.document.addClientsToDeal.submit();
+    			}
+    		}
+    		
+    		function return_scroll (id) {    	
+    			varname = "ad" + id + "k";
+    			//alert (varname);
+    			ad = document.getElementById(varname);
+    			//alert(varname);
+    			ad.focus();
+    			
+    			//alert(ad);
+    			//st = ad.scrollHeight;
+    			//alert (st);
+    			//scrollIt (this_y);
+    		}
+    		function select_tab_sens (page) {
+    			if (confirm("Are you sure you want to navigate here without saving changes?")) {
+	 			window.location = page;
+	 		}
+	 	}
+	 	function select_tab_insens (page) {
+	 		window.location = page;
+	 	}
+                        
+function clear_textbox()
+{
+if (document.adlEditForm.BODY.value == "Type your ad here.")
+document.adlEditForm.BODY.value = "";
+}
+           
+-->                
+</script>

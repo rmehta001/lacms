@@ -1,0 +1,16 @@
+//BEGIN editPrefsDo //
+	
+	$user_num_ads = $_POST['num_ads'];
+	if (!$user_num_ads) {
+		$user_num_ads = 10;
+	}
+	$user_sig = prepareAdBody($_POST['user_sig'], 0);
+	$pref_popup = $_POST['pref_popup'];
+	
+	$quStrEditPrefs = "UPDATE USERS SET NUM_ADS=$user_num_ads, USER_SIG='$user_sig', PREF_POPUP='$pref_popup' WHERE UID=$uid";
+	$quEditPrefs = mysqli_query($dbh, $quStrEditPrefs);
+	$page = "home";
+	$msg = "Personal settings saved.";
+	$title = "Home";
+	$limitN = $user_num_ads;
+//END editPrefsDo //

@@ -1,0 +1,6 @@
+BSTAPTS HTML DUMP LOG FILE
+Fri Dec 30 22:06:24 EST 2016
+-----------------------------------------------------------
+
+
+Wrote 0 records to rent-to-own 

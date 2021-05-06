@@ -1,0 +1,18 @@
+BSTAPTS HTML DUMP LOG FILE
+Wed Feb 13 19:31:43 EST 2008
+-----------------------------------------------------------
+
+
+Wrote 32090 records to class 
+Wrote 464 records to forsale 
+Wrote 15 records to classcoms 
+Wrote 101 records to classcomr 
+Wrote 37 records to parkingspaces-rent 
+Wrote 4 records to parkingspaces-sale 
+Wrote 1 records to parkingspaces-wanted 
+Wrote 25 records to vacation 
+Wrote 14 records to rent-to-own 
+Wrote 9 records to business-ops 
+Wrote 7 records to senior-living-rental 
+Wrote 6 records to senior-living-sale 
+Wrote 5 records to bank-owned- 

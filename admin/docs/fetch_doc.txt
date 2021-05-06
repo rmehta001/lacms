@@ -1,0 +1,61 @@
+DOCUMENTATION - FETCH.PHP
+Location of this file: bostonapartments/lacms/admin/docs/fetch_doc.txt
+Location of application: http://www.bostonapartments.com/fetch.php
+
+VERSION 1.0
+
+ABSTRACT:
+Fetch.php is an mutli-purpose application for retrieving ads based on a query
+and displays the proper headers and footers.  
+
+USAGE:
+By adding keys to the query string,  you define the filter and sorting which then also 
+chooses which headers/footers will be displayed.  You can send any or all of the filter keys as
+an array by adding '[]' after the name of the key.  This allows one to query on mulitple values
+on the same key using the boolean operator 'OR'.  
+
+example:  ?key[]=value1&key[]=value2  translates to KEY=VALUE1 OR KEY=VALUE2
+
+the filter keys as of this version(which are subject to grow) are as follows:
+Key	Field	Description
+-------------------------------------
+cli	CLI	filters to a certain ad agency by group id,  this also determines that the HEADERS and FOOTERS for the agency will be used.
+type	TYPE	filters to a certain type (i.e. rentals, sales, etc)  This also determines that the agencys header and footers for tha type will be used.
+loc	LOC	filters to a location ID.
+priceStart	PRICE	filters all ads greater or equal to the value.
+priceEnd	PRICE	filters all ads lesser or equal to the value.
+rooms	ROOMS	Filters to that ROOMS value.
+fee	NOFEE	FIlters to that nofee value.
+
+There are 10 sort keys defined.  They are sort1, sort2....sort10.  Asigning values to these determine a sorting option in order of definition.
+The values for the sort keys are the field names from the database in all caps.  You can use PHPmyAdmin to see what the fields are called.
+
+example ?sort1=LOCNAME&sort2=PRICE&sort3=DATEIN sorts the record set first by LOCNAME, then by PRICE and then by DATEIN
+
+
+USEFULL EXAMPLES
+
+To show all of group 171's ads:
+
+	?cli=171
+
+To show all of group 171's type 1 ads (rentals)
+	
+	?cli=171&type=1
+
+To show that sorted by location name (alphabetically)
+
+	?cli=171&type=1&sort1=LOCNAME
+
+To show all rentals for all agencys sorted by location name (equivilant to class1.htm)
+
+	?type=1&sort1=LOCNAME
+
+To show all the rentals for group 215 in locations 34,67, and 49 sorted by ROOMS, then PRICE, location name:
+
+	?cli=215&loc[]=34&loc[]=67&loc[]=49&sort1=ROOMS&sort2=PRICE&sort3=LOCNAME
+
+
+
+
+
